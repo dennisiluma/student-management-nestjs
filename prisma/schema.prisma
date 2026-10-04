@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ENUMS
+enum UserRole {
+  ADMIN   @map("admin")
+  TEACHER @map("teacher")
+  STUDENT @map("student")
+}
+
+enum GradeTerm {
+  FIRST_TERM  @map("1st Term")
+  SECOND_TERM @map("2nd Term")
+  THIRD_TERM  @map("3rd Term")
+}
+
+//MODELS
+
+model User {
+  id             Int      @id @default(autoincrement())
+  email          String   @unique
+  hashedPassword String   @map("hashed_password")
+  role           UserRole @default(STUDENT)
+  isActive       Boolean  @default(true) @map("is_active")
+  firstName      String?  @map("first_name") @db.VarChar(50)
+  lastName       String?  @map("last_name") @db.VarChar(50)
+  phoneNumber    String?  @map("phone_number") @db.VarChar(20)
+  bio            String?  @db.Text
+  classroomId    Int?     @map("classroom_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  /// Many-to-One
+  classroom Classroom? @relation("StudentClassroom", fields: [classroomId], references: [id], onDelete: SetNull)
+
+  /// One-to-One
+  managedClass Classroom? @relation("TeacherClassroom")
+
+  /// One-to-Many
+  results AcademicResult[]
+
+  @@map("users")
+}
+
+model Classroom {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  teacherId Int?     @unique @map("teacher_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// The teacher assigned to manage this classroom (One-to-One)
+  teacher User? @relation("TeacherClassroom", fields: [teacherId], references: [id], onDelete: SetNull)
+
+  /// One-to-Many
+  students User[] @relation("StudentClassroom")
+
+  @@map("classrooms")
+}
+
+model AcademicResult {
+  id           Int       @id @default(autoincrement())
+  studentId    Int       @map("student_id")
+  term         GradeTerm
+  academicYear String    @map("academic_year") @db.VarChar(20)
+  grades       Json
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  /// Many-to-One
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("academic_results")
+}
